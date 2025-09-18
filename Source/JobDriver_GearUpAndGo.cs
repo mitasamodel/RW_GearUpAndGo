@@ -41,28 +41,31 @@ namespace GearUpAndGo
 			{
 				Pawn pawn = toil.actor;
 				if (pawn.thinker == null) return;
-				
-				//Find apparel
-				JobGiver_OptimizeApparel optimizer = pawn.thinker.TryGetMainTreeThinkNode<JobGiver_OptimizeApparel>();
-				if (optimizer == null)
-				{
-					// Try to create a new optimizer if none exists
-					optimizer = new JobGiver_OptimizeApparel();
-				}
 
-				pawn.mindState?.Notify_OutfitChanged();// Lie so that it re-equips things
-				ThinkResult result = optimizer.TryIssueJobPackage(pawn, new JobIssueParams()); //TryGiveJob is protected :(
+				ThinkResult result = ThinkResult.NoJob;
 
 				//Find loadout, Combat Extended
+				if (CEloadoutGiverType != null && CEloadoutGetter != null)
+				{
+					object CELoadoutGiver = CEloadoutGetter.Invoke(pawn.thinker, new object[] { });
+					if (CELoadoutGiver != null)
+						result = (ThinkResult)TryIssueJobPackageInfo.Invoke(CELoadoutGiver, new object[] { pawn, new JobIssueParams() });
+				}
+
+				// Then find apparel
 				if (result == ThinkResult.NoJob)
 				{
-					if (CEloadoutGiverType != null && CEloadoutGetter != null)
+					JobGiver_OptimizeApparel optimizer = pawn.thinker.TryGetMainTreeThinkNode<JobGiver_OptimizeApparel>();
+					if (optimizer == null)
 					{
-						object CELoadoutGiver = CEloadoutGetter.Invoke(pawn.thinker, new object[] { });
-						if (CELoadoutGiver != null)
-							result = (ThinkResult)TryIssueJobPackageInfo.Invoke(CELoadoutGiver, new object[] { pawn, new JobIssueParams() });
+						// Try to create a new optimizer if none exists
+						optimizer = new JobGiver_OptimizeApparel();
 					}
+
+					pawn.mindState?.Notify_OutfitChanged();// Lie so that it re-equips things
+					result = optimizer.TryIssueJobPackage(pawn, new JobIssueParams()); //TryGiveJob is protected :(
 				}
+
 				//Okay, nothing to do, go to target
 				if (result == ThinkResult.NoJob)
 				{
